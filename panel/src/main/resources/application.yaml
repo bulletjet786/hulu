@@ -1,0 +1,23 @@
+server:
+  port: 8181
+
+spring:
+  application:
+    name: hulu_panel
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/hulu_panel
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+logging:
+  level:
+    root: info
+    org:
+      hibernate:
+        type: debug
