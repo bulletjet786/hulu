@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 class VersionLatestRequest(
-    val myStartVersion: String,
+    val myStarterVersion: String,
     val myHuluVersion: String,
 )
 
