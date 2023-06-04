@@ -1,0 +1,9 @@
+### Get latest version
+POST http://localhost:8181/latest
+Content-Type: application/json
+
+{
+  "myStarterVersion": "0.0.1",
+  "myHuluVersion": "0.0.1"
+}
+
