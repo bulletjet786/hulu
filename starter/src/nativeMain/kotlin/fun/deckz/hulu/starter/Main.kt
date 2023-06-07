@@ -1,8 +1,9 @@
 package `fun`.deckz.hulu.starter
 
-import `fun`.deckz.hulu.api.version.VersionLatestRequest
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.z4kn4fein.semver.Version
 import io.ktor.client.*
+import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.toKString
@@ -12,10 +13,10 @@ import kotlinx.coroutines.async
 import platform.posix.opendir
 import platform.posix.readdir
 
-private val logger = mu.KotlinLogging.logger {}
+private val logger = KotlinLogging.logger {}
 
 fun main() {
-    PackagerManager.getLocalVersion()
+    PackagerManager.run()
 }
 
 
@@ -24,16 +25,17 @@ object PackagerManager {
     const val WORK_DIR: String = "/opt/fun.deckz.hulu"
     const val WORK_BIN_DIR: String = "$WORK_DIR/bin"
 
-
     fun run() {
         // for starter, we keep it the to latest.
-
-        val localVersions = getLocalVersion()
 
         // for hulu package, we keep the latest three version.
     }
 
-    fun getLatestVersion() {
+    fun getLocalLatestVersion() {
+        val localVersions = getLocalVersions()
+        localVersions.forEach {
+            logger.info { "found local version: $it" }
+        }
 
     }
 
@@ -52,15 +54,15 @@ object PackagerManager {
         }.sorted().reversed();
     }
 
-    fun getRemoteVersion() {
+    suspend fun getRemoteVersion() {
 
-        val client = HttpClient()
+        val client = HttpClient(CIO) {}
 
         // 获取一个 URL 的内容。
-//        val response = CoroutineScope(Dispatchers.Default).async {
-//            client.get { url("https://www.baidu.com") }
-//        }
-//        response.await().status
+        val response = CoroutineScope(Dispatchers.Default).async {
+            client.get { url("https://127.0.0.1:8181/api/version/latest") }
+        }
+        response.await().status
 
         client.close()
     }

@@ -8,8 +8,6 @@ plugins {
 }
 
 repositories {
-    maven("https://maven.aliyun.com/nexus/content/groups/public/")
-    maven("https://jitpack.io")
     mavenCentral()
 }
 
@@ -21,9 +19,6 @@ kotlin {
             }
         }
     }
-    jvm() {
-        withJava()
-    }
     sourceSets {
         val nativeMain by getting {
             dependencies {
@@ -34,8 +29,10 @@ kotlin {
                 implementation("io.ktor:ktor-client-cio:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-server-content-negotiation:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:${project.ext.get("ktor.version")}")
+                // https://mvnrepository.com/artifact/io.github.oshai/kotlin-logging
+                 implementation("io.github.oshai:kotlin-logging:4.0.0-beta-29")
+//                implementation("io.github.microutils:kotlin-logging:3.0.5")
                 implementation(kotlin("stdlib-jdk8"))
-                implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
             }
         }
         val nativeTest by getting
