@@ -12,6 +12,7 @@ import kotlinx.coroutines.async
 import platform.posix.opendir
 import platform.posix.readdir
 
+private val logger = mu.KotlinLogging.logger {}
 
 fun main() {
     PackagerManager.getLocalVersion()
@@ -23,8 +24,11 @@ object PackagerManager {
     const val WORK_DIR: String = "/opt/fun.deckz.hulu"
     const val WORK_BIN_DIR: String = "$WORK_DIR/bin"
 
+
     fun run() {
         // for starter, we keep it the to latest.
+
+        val localVersions = getLocalVersion()
 
         // for hulu package, we keep the latest three version.
     }
@@ -33,7 +37,7 @@ object PackagerManager {
 
     }
 
-    fun getLocalVersion(): List<Version> {
+    fun getLocalVersions(): List<Version> {
         val packageDir = opendir(WORK_BIN_DIR) ?: throw RuntimeException("can't open WORK_BIN_DIR")
         val versionDirs = mutableListOf<String>()
         do {
