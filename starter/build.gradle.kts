@@ -6,6 +6,9 @@ plugins {
     kotlin("multiplatform")
     application
 }
+dependencies {
+    implementation("io.ktor:ktor-client-logging-jvm:2.3.0")
+}
 
 repositories {
     mavenCentral()
@@ -23,15 +26,15 @@ kotlin {
         val nativeMain by getting {
             dependencies {
                 implementation(project(":shared"))
-                // https://mvnrepository.com/artifact/io.github.z4kn4fein/semver-linuxx64
+                // https://mvnrepository.com/artifact/io.github.z4kn4fein/semver
                 implementation("io.github.z4kn4fein:semver:${project.ext.get("semver.version")}")
                 implementation("io.ktor:ktor-client-core:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-client-cio:${project.ext.get("ktor.version")}")
-                implementation("io.ktor:ktor-server-content-negotiation:${project.ext.get("ktor.version")}")
+                implementation("io.ktor:ktor-client-content-negotiation:${project.ext.get("ktor.version")}")
+                implementation("io.ktor:ktor-client-logging:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:${project.ext.get("ktor.version")}")
                 // https://mvnrepository.com/artifact/io.github.oshai/kotlin-logging
-                 implementation("io.github.oshai:kotlin-logging:4.0.0-beta-29")
-//                implementation("io.github.microutils:kotlin-logging:3.0.5")
+                implementation("io.github.oshai:kotlin-logging:4.0.0-beta-29")
                 implementation(kotlin("stdlib-jdk8"))
             }
         }

@@ -1,5 +1,5 @@
 ### Get latest version
-POST http://localhost:8181/latest
+POST http://localhost:8181/version/latest
 Content-Type: application/json
 
 {
