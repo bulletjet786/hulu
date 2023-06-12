@@ -11,7 +11,7 @@ spring:
         format_sql: true
   datasource:
     url: jdbc:mysql://localhost:3306/hulu_panel
-    username: root
+    username: panel
     password: password
     driver-class-name: com.mysql.cj.jdbc.Driver
 
