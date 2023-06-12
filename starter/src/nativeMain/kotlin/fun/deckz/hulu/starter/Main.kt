@@ -16,8 +16,10 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.cinterop.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.json.Json
 import platform.posix.*
+import kotlin.native.concurrent.AtomicInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -34,30 +36,9 @@ private val LET_SERVICE_DURATION: Duration = 10.seconds
 private val CATCH_SIGNALS = listOf(SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM)
 
 fun main() = runBlocking {
-    logger.info { "start main..." }
-    ProcessManager.writePidToPidFile(ProcessManager.getCurrentPid(), PackagerManager.MY_PID_FILE)
-    CATCH_SIGNALS.forEach { sig ->
-        signal(sig, staticCFunction<Int, Unit> {
-            exitSigHandler(it)
-        })
-    }
+    logger.info { "start, version is $myVersion" }
 
-    PackagerManager.startDurationDaemon(UPDATE_DURATION) {
-        PackagerManager.updateVersionGuard()
-    }
-    PackagerManager.startDurationDaemon(LET_SERVICE_DURATION) {
-        PackagerManager.letServiceGuard()
-    }
-
-    while (true) {
-        try {
-            PackagerManager.letServiceGuard()
-            PackagerManager.updateVersionGuard()
-        } catch (e: Exception) {
-            logger.error { "found exception on updateVersionDaemon: ${e.message}" }
-        }
-        delay(UPDATE_DURATION)
-    }
+    PackagerManager.run()
 }
 
 fun exitSigHandler(sig: Int) {
@@ -76,6 +57,9 @@ object PackagerManager {
 
     private const val huluHost: String = "localhost"
     private const val huluPort: Int = 8181
+
+    private val guardCheckChannel: Channel<Unit> = Channel()
+    private val huluLetPid: AtomicInt = AtomicInt(0) // 0 for no let service process
 
     private val client = HttpClient(CIO) {
         defaultRequest {
@@ -98,22 +82,45 @@ object PackagerManager {
         }
     }
 
-    fun startDurationDaemon(duration: Duration, daemonFunc: suspend () -> Unit) {
-        CoroutineScope(Dispatchers.Default).launch {
-            while (true) {
-                try {
-                    updateVersionGuard()
-                } catch (e: Exception) {
-                    logger.error { "found exception on updateVersionDaemon: ${e.message}" }
-                }
-                delay(duration)
-            }
+    fun run() {
+        startDurationDaemon(LET_SERVICE_DURATION) {
+            letServiceGuardTicker()
+        }
+        startDaemon {
+            letServiceGuard()
+        }
+        startDurationDaemon(UPDATE_DURATION) {
+            updateVersionGuard()
         }
 
     }
 
-    suspend fun updateVersionGuard() {
+    private fun startDurationDaemon(duration: Duration, daemonFunc: suspend () -> Unit) {
+        CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                try {
+                    daemonFunc()
+                } catch (e: Exception) {
+                    logger.error { "found exception on startDurationDaemon: ${e.message}" }
+                }
+                delay(duration)
+            }
+        }
+    }
 
+    private fun startDaemon(daemonFunc: suspend () -> Unit) {
+        CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                try {
+                    daemonFunc()
+                } catch (e: Exception) {
+                    logger.error { "found exception on startDaemon: ${e.message}" }
+                }
+            }
+        }
+    }
+
+    private suspend fun updateVersionGuard() {
         // get local version for starter and hulu
         logger.info { "start update version daemon" }
         val localHuluVersions = getHuluLocalVersions()
@@ -139,21 +146,40 @@ object PackagerManager {
         // for starter, we keep it the to latest.
         if (remoteStarterVersion > localStarterVersion) {
             updateStarter(remoteVersionResponse)
-            restartStarter()
+//            restartStarter()  // TODO:
         }
     }
 
-    fun letServiceGuard() {
-        ProcessManager.removePidFile("$WORK_VAR_DIR/let.pid")
-        execv("$WORK_BIN_DIR/let.kexe", null)
+    private suspend fun letServiceGuard() {
+        for (unit in guardCheckChannel) {
+            // check whether the let service alive
+            memScoped {
+                val status: IntVar = alloc<IntVar>()
+                // hulu let don't start or has been exit, we restart it.
+                if (huluLetPid.value == 0 || waitpid(huluLetPid.value, status.ptr, WNOHANG) != 0) {
+                    if (huluLetPid.value != 0) {
+                        logger.error { "hulu let has been exist, because of exitStatus=" + ((status.value shl 8) and 0xFF) }
+                    }
+                    // restart let service
+                    huluLetPid.value = ProcessManager.startCmd("$WORK_BIN_DIR/let.kexe", null) ?: throw RuntimeException("start let service failed")
+                }
+            }
+        }
     }
 
-    private fun restartHulu() {
+    private suspend fun letServiceGuardTicker() {
+        guardCheckChannel.send(Unit)
+    }
 
+    private suspend fun restartHulu() {
+        // we just stop the let service, and then send signal to guardCheckChannel
+        kill(huluLetPid.value, SIGILL)
+        guardCheckChannel.send(Unit)
     }
 
     private fun restartStarter() {
-
+        execl("systemctl", "daemon-restart")
+        execl("systemctl", "restart")   // TODO:
     }
 
     private fun removeOldVersion(removeVersions: List<Version>) {
@@ -293,8 +319,29 @@ object ProcessManager {
         }
     }
 
-    // TODO: need signal handle
     fun removePidFile(filePath: String) {
         unlink(filePath)
+    }
+
+    fun startCmd(cmd: String, args: Array<String>?): Int? {
+        val ret = fork()
+        if (ret < 0) {
+            logger.error { "start let service failed" }
+            return null
+        }
+        return if (ret == 0) {   // for child process
+//            memScoped {
+//                val cArgs = allocArray<ByteVar>(args.size + 1)
+//                args.forEachIndexed(
+//                    cArgs[i]
+//                )
+//            }
+            if (args == null) {
+                execv(cmd, null)
+            }
+            0
+        } else {    // for parent process
+            ret
+        }
     }
 }
