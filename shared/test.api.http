@@ -1,0 +1,2 @@
+GET http://localhost:8282/
+Content-Type: application/json

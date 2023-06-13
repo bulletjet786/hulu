@@ -6,9 +6,6 @@ plugins {
     kotlin("multiplatform")
     application
 }
-dependencies {
-    implementation("io.ktor:ktor-client-logging-jvm:2.3.0")
-}
 
 repositories {
     mavenCentral()
