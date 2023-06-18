@@ -36,6 +36,8 @@ kotlin {
                 implementation("io.ktor:ktor-server-content-negotiation:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-server-cio:${project.ext.get("ktor.version")}")
+                // https://mvnrepository.com/artifact/io.github.oshai/kotlin-logging
+                implementation("io.github.oshai:kotlin-logging:4.0.0-beta-29")
             }
         }
         val nativeTest by getting

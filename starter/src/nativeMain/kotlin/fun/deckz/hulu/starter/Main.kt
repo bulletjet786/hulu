@@ -3,6 +3,7 @@ package `fun`.deckz.hulu.starter
 import `fun`.deckz.hulu.api.common.HuluResponse
 import `fun`.deckz.hulu.api.version.VersionLatestRequest
 import `fun`.deckz.hulu.api.version.VersionLatestResponse
+import `fun`.deckz.hulu.process.ProcessManager
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.z4kn4fein.semver.Version
 import io.ktor.client.*
@@ -24,20 +25,26 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+
 private val myVersion = Version(
-    major = 0,
-    minor = 0,
-    patch = 1
+    major = 0, minor = 0, patch = 1
 )
+
 private val logger = KotlinLogging.logger("Main")
 private val UPDATE_DURATION: Duration = 10.minutes
 private val LET_SERVICE_DURATION: Duration = 10.seconds
 
 private val CATCH_SIGNALS = listOf(SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM)
 
-fun main() = runBlocking {
-    logger.info { "start, version is $myVersion" }
+fun main(argv: Array<String>) = runBlocking {
+    if (argv.isNotEmpty()) {
+        if (argv[0] == "version") {
+            println(myVersion)
+            exit(0)
+        }
+    }
 
+    logger.info { "starter version is $myVersion" }
     PackagerManager.run()
 }
 
@@ -48,7 +55,7 @@ fun exitSigHandler(sig: Int) {
 object PackagerManager {
     private val logger = KotlinLogging.logger {}
 
-    //    private const val WORK_DIR: String = "/opt/fun.deckz/hulu"
+    // private const val WORK_DIR: String = "/opt/fun.deckz/hulu"
     private const val WORK_DIR: String = "/home/deck/tmp/fun.deckz/hulu"
     private const val WORK_BIN_DIR: String = "$WORK_DIR/bin"
     private const val WORK_VAR_DIR: String = "$WORK_DIR/var"
@@ -68,13 +75,11 @@ object PackagerManager {
             header(HttpHeaders.ContentType, ContentType.Application.Json)
         }
         install(ContentNegotiation) {
-            json(
-                Json {
-                    encodeDefaults = true
-                    prettyPrint = true
-                    ignoreUnknownKeys = true
-                }
-            )
+            json(Json {
+                encodeDefaults = true
+                prettyPrint = true
+                ignoreUnknownKeys = true
+            })
         }
         install(Logging) {
             logger = Logger.DEFAULT
@@ -161,7 +166,8 @@ object PackagerManager {
                         logger.error { "hulu let has been exist, because of exitStatus=" + ((status.value shl 8) and 0xFF) }
                     }
                     // restart let service
-                    huluLetPid.value = ProcessManager.startCmd("$WORK_BIN_DIR/let.kexe", null) ?: throw RuntimeException("start let service failed")
+                    huluLetPid.value = ProcessManager.startCmd("$WORK_BIN_DIR/let.kexe", null)
+                        ?: throw RuntimeException("start let service failed")
                 }
             }
         }
@@ -189,7 +195,7 @@ object PackagerManager {
     }
 
     private suspend fun updateStarter(remoteVersionResponse: VersionLatestResponse) {
-        val destFilePath = "$WORK_DIR/starter.kexe"
+        val destFilePath = "$WORK_BIN_DIR/starter.kexe.downloading"
         val downloadingFilePath = destFilePath + DOWNLOADING_SUFFIX
         downloadFile(remoteVersionResponse.starterDownloadUrl, downloadingFilePath)
         rename(downloadingFilePath, destFilePath)
@@ -202,20 +208,11 @@ object PackagerManager {
         val destDirPath = WORK_BIN_DIR + "/" + remoteVersionResponse.huluVersion
         val downloadingDirPath = destDirPath + DOWNLOADING_SUFFIX
         mkdir(
-            downloadingDirPath,
-            (S_IRWXU or S_IRGRP or S_IWGRP or S_IROTH or S_IWOTH).toUInt()
+            downloadingDirPath, (S_IRWXU or S_IRGRP or S_IWGRP or S_IROTH or S_IWOTH).toUInt()
         )
         downloadFile(letDownloadUrl, "$downloadingDirPath/let.kexe")
         downloadFile(padDownloadUrl, "$downloadingDirPath/pad.kexe")
         rename(downloadingDirPath, destDirPath)
-    }
-
-    private fun getPids() {
-        ProcessInfo(
-            starterPid = getpid(),
-            letPid = ProcessManager.getPidFromPidFile("$WORK_VAR_DIR/let.pid"),
-            padPid = ProcessManager.getPidFromPidFile("$WORK_VAR_DIR/pad.pid"),
-        )
     }
 
     private fun getHuluLocalVersions(): List<Version> {
@@ -223,8 +220,8 @@ object PackagerManager {
         val versionDirs = mutableListOf<String>()
         do {
             val readDir = readdir(packageDir) ?: break;
-            if (readDir.pointed.d_name.toKString() == "." || readDir.pointed.d_name.toKString() == ".."
-                || readDir.pointed.d_name.toKString().endsWith(DOWNLOADING_SUFFIX)
+            if (readDir.pointed.d_name.toKString() == "." || readDir.pointed.d_name.toKString() == ".." || readDir.pointed.d_name.toKString()
+                    .endsWith(DOWNLOADING_SUFFIX)
             ) {
                 continue
             }
@@ -248,8 +245,7 @@ object PackagerManager {
             url("/version/latest")
             setBody(
                 VersionLatestRequest(
-                    myStarterVersion = starterVersion.toString(),
-                    myHuluVersion = huluVersion.toString()
+                    myStarterVersion = starterVersion.toString(), myHuluVersion = huluVersion.toString()
                 )
             )
         }.body()
@@ -277,71 +273,5 @@ object NameGenerator {
             result + alphaPool.random()
         }
         return result
-    }
-}
-
-class ProcessInfo(
-    starterPid: Int,
-    letPid: Int?,
-    padPid: Int?
-)
-
-object ProcessManager {
-
-    private val logger = KotlinLogging.logger {}
-
-    fun getCurrentPid(): Int {
-        return getpid()
-    }
-
-    fun getPidFromPidFile(filePath: String): Int? {
-        val pidFile = fopen(filePath, "r")
-        return if (pidFile == null) {
-            null
-        } else {
-            val pid = memScoped {
-                val pidBuffer: CArrayPointer<ByteVar> = nativeHeap.allocArray<ByteVar>(32)
-                fread(pidBuffer, 32, 1, pidFile)
-                pidBuffer.toKString()
-            }
-            pid.toInt()
-        }
-    }
-
-    fun writePidToPidFile(pid: Int, filePath: String) {
-        val pidFile = fopen(filePath, "w")
-        if (pidFile == null) {
-            throw RuntimeException("can't open filePath=$filePath, because of $errno")
-        } else {
-            fwrite(pid.toString().cstr, pid.toString().length.toULong(), 1, pidFile)
-            logger.info { "write pid=$pid to $filePath" }
-            fclose(pidFile)
-        }
-    }
-
-    fun removePidFile(filePath: String) {
-        unlink(filePath)
-    }
-
-    fun startCmd(cmd: String, args: Array<String>?): Int? {
-        val ret = fork()
-        if (ret < 0) {
-            logger.error { "start let service failed" }
-            return null
-        }
-        return if (ret == 0) {   // for child process
-//            memScoped {
-//                val cArgs = allocArray<ByteVar>(args.size + 1)
-//                args.forEachIndexed(
-//                    cArgs[i]
-//                )
-//            }
-            if (args == null) {
-                execv(cmd, null)
-            }
-            0
-        } else {    // for parent process
-            ret
-        }
     }
 }

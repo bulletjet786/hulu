@@ -8,30 +8,24 @@ plugins {
 group = "fun.deckz.hulu"
 version = "1.0-SNAPSHOT"
 
-repositories {
-    google()
-    mavenCentral()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-}
-
 kotlin {
     jvm()
-    linuxX64()
     sourceSets {
         val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
+                // https://mvnrepository.com/artifact/io.github.z4kn4fein/semver
+                implementation("io.github.z4kn4fein:semver:${project.ext.get("semver.version")}")
             }
         }
-        val jvmTest by getting
     }
 }
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "fun.deckz.hulu.pad.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Pkg)
             packageName = "pad"
             packageVersion = "1.0.0"
         }

@@ -25,6 +25,10 @@ kotlin {
                 implementation("io.ktor:ktor-serialization-kotlinx-json:${project.ext.get("ktor.version")}")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
                 implementation(kotlin("stdlib-jdk8"))
+                // https://mvnrepository.com/artifact/io.github.oshai/kotlin-logging
+                implementation("io.github.oshai:kotlin-logging:4.0.0-beta-29")
+                // https://mvnrepository.com/artifact/io.github.z4kn4fein/semver
+                implementation("io.github.z4kn4fein:semver:${project.ext.get("semver.version")}")
             }
         }
         val commonTest by getting {

@@ -1,0 +1,10 @@
+### sandbox create
+POST http://localhost:8282/sandbox/create
+Content-Type: application/json
+
+{
+  "command": "sleep",
+  "argv": [
+    "360000"
+  ]
+}

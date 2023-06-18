@@ -12,7 +12,7 @@ POST http://150.158.135.143:8181/version/latest
 Content-Type: application/json
 
 {
-"myStarterVersion": "0.0.1",
-"myHuluVersion": "0.0.1"
+  "myStarterVersion": "0.0.1",
+  "myHuluVersion": "0.0.1"
 }
 

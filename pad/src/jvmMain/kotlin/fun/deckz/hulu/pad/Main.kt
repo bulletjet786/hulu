@@ -12,6 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import io.github.z4kn4fein.semver.Version
+import kotlin.system.exitProcess
+
+private val myVersion = Version(
+    major = 0, minor = 0, patch = 1
+)
 
 @Composable
 @Preview
@@ -32,7 +38,13 @@ fun App() {
     }
 }
 
-fun main() = application {
+fun main(argv: Array<String>) = application {
+    if (argv.isNotEmpty()) {
+        if (argv[0] == "version") {
+            println(myVersion)
+            exitProcess(0)
+        }
+    }
     Window(onCloseRequest = ::exitApplication) {
         App()
     }
