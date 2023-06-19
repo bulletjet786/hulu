@@ -25,7 +25,7 @@ compose.desktop {
     application {
         mainClass = "fun.deckz.hulu.pad.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Pkg)
+            targetFormats(TargetFormat.AppImage)
             packageName = "pad"
             packageVersion = "1.0.0"
         }
