@@ -22,6 +22,10 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                implementation("io.ktor:ktor-client-core:${project.ext.get("ktor.version")}")
+                implementation("io.ktor:ktor-client-cio:${project.ext.get("ktor.version")}")
+                implementation("io.ktor:ktor-client-content-negotiation:${project.ext.get("ktor.version")}")
+                implementation("io.ktor:ktor-client-logging:${project.ext.get("ktor.version")}")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:${project.ext.get("ktor.version")}")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
                 implementation(kotlin("stdlib-jdk8"))

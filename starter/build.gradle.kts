@@ -7,10 +7,6 @@ plugins {
     application
 }
 
-repositories {
-    mavenCentral()
-}
-
 kotlin {
     linuxX64("native").apply {
         binaries {

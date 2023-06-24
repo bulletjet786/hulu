@@ -1,8 +1,8 @@
 package `fun`.deckz.hulu.starter
 
 import `fun`.deckz.hulu.api.common.HuluResponse
-import `fun`.deckz.hulu.api.version.VersionLatestRequest
-import `fun`.deckz.hulu.api.version.VersionLatestResponse
+import `fun`.deckz.hulu.api.version.*
+import `fun`.deckz.hulu.process.Process
 import `fun`.deckz.hulu.process.ProcessManager
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.z4kn4fein.semver.Version
@@ -15,12 +15,11 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.cinterop.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.json.Json
 import platform.posix.*
-import kotlin.native.concurrent.AtomicInt
+import kotlin.native.concurrent.AtomicReference
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -39,34 +38,44 @@ private val CATCH_SIGNALS = listOf(SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIG
 fun main(argv: Array<String>) = runBlocking {
     if (argv.isNotEmpty()) {
         if (argv[0] == "version") {
-            println(myVersion)
+            print(myVersion)
             exit(0)
         }
     }
 
     logger.info { "starter version is $myVersion" }
-    PackagerManager.run()
+    ModuleManager.run()
 }
 
 fun exitSigHandler(sig: Int) {
-    ProcessManager.removePidFile(PackagerManager.MY_PID_FILE)
+    ProcessManager.removePidFile(ModuleManager.MY_PID_FILE)
 }
 
-object PackagerManager {
-    private val logger = KotlinLogging.logger {}
+object ModuleManager {
+
+    private val logger = KotlinLogging.logger("ModuleManager")
 
     // private const val WORK_DIR: String = "/opt/fun.deckz/hulu"
     private const val WORK_DIR: String = "/home/deck/tmp/fun.deckz/hulu"
-    private const val WORK_BIN_DIR: String = "$WORK_DIR/bin"
-    private const val WORK_VAR_DIR: String = "$WORK_DIR/var"
-    const val MY_PID_FILE: String = "$WORK_VAR_DIR/starter.pid"
-    private const val DOWNLOADING_SUFFIX: String = ".downloading"
 
-    private const val huluHost: String = "localhost"
+    private const val WORK_STARTER_DIR: String = "$WORK_DIR/starter"
+    private const val WORK_LET_DIR: String = "$WORK_DIR/let"
+    private const val WORK_PAD_DIR: String = "$WORK_DIR/pad"
+
+    private const val WORK_DATA_DIR: String = "$WORK_DIR/data"
+    private const val WORK_VAR_DIR: String = "$WORK_DIR/var"
+    private const val WORK_ETC_DIR: String = "$WORK_DIR/etc"
+
+    const val MY_PID_FILE: String = "$WORK_VAR_DIR/starter.pid"
+
+    //    private const val huluHost: String = "localhost"
+    private const val huluHost: String = "150.158.135.143"
     private const val huluPort: Int = 8181
 
+    private const val DOWNLOAD_LOCATION = "http://150.158.135.143:7777/hulu/"
+
     private val guardCheckChannel: Channel<Unit> = Channel()
-    private val huluLetPid: AtomicInt = AtomicInt(0) // 0 for no let service process
+    private val letProcess: AtomicReference<Process?> = AtomicReference(null)
 
     private val client = HttpClient(CIO) {
         defaultRequest {
@@ -87,7 +96,7 @@ object PackagerManager {
         }
     }
 
-    fun run() {
+    suspend fun run() {
         startDurationDaemon(LET_SERVICE_DURATION) {
             letServiceGuardTicker()
         }
@@ -97,7 +106,7 @@ object PackagerManager {
         startDurationDaemon(UPDATE_DURATION) {
             updateVersionGuard()
         }
-
+        awaitCancellation()
     }
 
     private fun startDurationDaemon(duration: Duration, daemonFunc: suspend () -> Unit) {
@@ -128,47 +137,44 @@ object PackagerManager {
     private suspend fun updateVersionGuard() {
         // get local version for starter and hulu
         logger.info { "start update version daemon" }
-        val localHuluVersions = getHuluLocalVersions()
-        val localHuluLatestVersion = getHuluLocalLatestVersion(localHuluVersions)
-        val localStarterVersion = myVersion
-        logger.info { "found local version: $localHuluLatestVersion, $localStarterVersion" }
+        val localHuluVersions = getModuleLocalVersion()
+        logger.info { "found local version: ${localHuluVersions.starter.version} ${localHuluVersions.let.version} ${localHuluVersions.pad.version}" }
+        val localStarterVersion = Version.parse(localHuluVersions.starter.version)
+        val localLetVersion = Version.parse(localHuluVersions.let.version)
+        val localPadVersion = Version.parse(localHuluVersions.pad.version)
 
         // get remote version for starter and hulu
-        val remoteVersionResponse = getRemoteVersion(localStarterVersion, localHuluLatestVersion)
-        val remoteHuluVersion = Version.parse(remoteVersionResponse.huluVersion)
-        val remoteStarterVersion = Version.parse(remoteVersionResponse.starterVersion)
-        logger.info { "found remote version: $remoteHuluVersion, $remoteStarterVersion" }
+        val remoteHuluLocations = getRemoteVersion(localHuluVersions)
+        logger.info { "found remote version: ${remoteHuluLocations.starter.version} ${remoteHuluLocations.let.version} ${remoteHuluLocations.pad.version}" }
+        val remoteStarterVersion = Version.parse(remoteHuluLocations.starter.version)
+        val remoteLetVersion = Version.parse(remoteHuluLocations.let.version)
+        val remotePadVersion = Version.parse(remoteHuluLocations.pad.version)
 
-        // for hulu package, we keep the latest three version.
-        if (remoteHuluVersion > localHuluLatestVersion) {
-            updateHulu(remoteVersionResponse)
-            if (localHuluVersions.size == 3) {
-                removeOldVersion(localHuluVersions.subList(2, localHuluVersions.size - 1))
-                restartHulu()
-            }
+        if (remoteStarterVersion > localStarterVersion) {
+            updateModule(remoteHuluLocations.starter)
+//            restartStarter()
         }
 
-        // for starter, we keep it the to latest.
-        if (remoteStarterVersion > localStarterVersion) {
-            updateStarter(remoteVersionResponse)
-//            restartStarter()  // TODO:
+        if (remoteLetVersion > localLetVersion) {
+            updateModule(remoteHuluLocations.let)
+            restartLet()
+        }
+
+        if (remotePadVersion > localPadVersion) {
+            updateModule(remoteHuluLocations.pad)
         }
     }
 
     private suspend fun letServiceGuard() {
         for (unit in guardCheckChannel) {
             // check whether the let service alive
-            memScoped {
-                val status: IntVar = alloc<IntVar>()
-                // hulu let don't start or has been exit, we restart it.
-                if (huluLetPid.value == 0 || waitpid(huluLetPid.value, status.ptr, WNOHANG) != 0) {
-                    if (huluLetPid.value != 0) {
-                        logger.error { "hulu let has been exist, because of exitStatus=" + ((status.value shl 8) and 0xFF) }
-                    }
-                    // restart let service
-                    huluLetPid.value = ProcessManager.startCmd("$WORK_BIN_DIR/let.kexe", null)
-                        ?: throw RuntimeException("start let service failed")
-                }
+            // if let don't start or has been exit, we restart it.
+            logger.info { "check let service ... " }
+            if (letProcess.value == null || !letProcess.value!!.alive()) {
+                logger.info { "found let process not exist, because={value=${letProcess.value}, alive={${letProcess.value?.alive()}}}, restart" }
+                letProcess.value?.clear()
+                // restart let service
+                letProcess.value = Process.start("$WORK_LET_DIR/let.kexe", null, pipe = false) // TODO:
             }
         }
     }
@@ -177,101 +183,53 @@ object PackagerManager {
         guardCheckChannel.send(Unit)
     }
 
-    private suspend fun restartHulu() {
-        // we just stop the let service, and then send signal to guardCheckChannel
-        kill(huluLetPid.value, SIGILL)
+    private suspend fun restartLet() {
+        // we just kill the let service, and then send signal to guardCheckChannel
+        letProcess.value?.kill()
         guardCheckChannel.send(Unit)
     }
 
     private fun restartStarter() {
-        execl("systemctl", "daemon-restart")
-        execl("systemctl", "restart")   // TODO:
+        Process.systemCmd("systemctl daemon-restart")
+        Process.systemCmd("systemctl restart ") // TODO:
     }
 
-    private fun removeOldVersion(removeVersions: List<Version>) {
-        removeVersions.forEach {
-            unlink("$WORK_BIN_DIR/$it")
-        }
+    private fun updateModule(starterModuleLocation: ModuleLocation) {
+        Process.systemCmd(updateCmd(starterModuleLocation))
     }
 
-    private suspend fun updateStarter(remoteVersionResponse: VersionLatestResponse) {
-        val destFilePath = "$WORK_BIN_DIR/starter.kexe.downloading"
-        val downloadingFilePath = destFilePath + DOWNLOADING_SUFFIX
-        downloadFile(remoteVersionResponse.starterDownloadUrl, downloadingFilePath)
-        rename(downloadingFilePath, destFilePath)
-    }
+    private fun getModuleLocalVersion(): HuluModuleVersion {
+        val starter = Process.start("$WORK_STARTER_DIR/starter.kexe", arrayOf("version"), pipe = true)
+        val let = Process.start("$WORK_LET_DIR/let.kexe", arrayOf("version"), pipe = true)
+        val pad = Process.start("$WORK_PAD_DIR/bin/pad", arrayOf("version"), pipe = true)
+        starter.waitExited()
+        let.waitExited()
+        pad.waitExited()
 
-    private suspend fun updateHulu(remoteVersionResponse: VersionLatestResponse) {
-        // download hulu package
-        val letDownloadUrl = remoteVersionResponse.huluDownloadUrl + "/let.kexe"
-        val padDownloadUrl = remoteVersionResponse.huluDownloadUrl + "/pad.kexe"
-        val destDirPath = WORK_BIN_DIR + "/" + remoteVersionResponse.huluVersion
-        val downloadingDirPath = destDirPath + DOWNLOADING_SUFFIX
-        mkdir(
-            downloadingDirPath, (S_IRWXU or S_IRGRP or S_IWGRP or S_IROTH or S_IWOTH).toUInt()
+        return HuluModuleVersion(
+            starter = ModuleVersion(name = ModuleName.STARTER, starter.readStdout()),
+            let = ModuleVersion(name = ModuleName.LET, let.readStdout()),
+            pad = ModuleVersion(name = ModuleName.PAD, pad.readStdout())
         )
-        downloadFile(letDownloadUrl, "$downloadingDirPath/let.kexe")
-        downloadFile(padDownloadUrl, "$downloadingDirPath/pad.kexe")
-        rename(downloadingDirPath, destDirPath)
     }
 
-    private fun getHuluLocalVersions(): List<Version> {
-        val packageDir = opendir(WORK_BIN_DIR) ?: throw RuntimeException("can't open WORK_BIN_DIR")
-        val versionDirs = mutableListOf<String>()
-        do {
-            val readDir = readdir(packageDir) ?: break;
-            if (readDir.pointed.d_name.toKString() == "." || readDir.pointed.d_name.toKString() == ".." || readDir.pointed.d_name.toKString()
-                    .endsWith(DOWNLOADING_SUFFIX)
-            ) {
-                continue
-            }
-            versionDirs.add(readDir.pointed.d_name.toKString())
-        } while (true)
-        return versionDirs.map {
-            Version.parse(it, strict = true)
-        }.sorted().reversed();
-    }
-
-    private fun getHuluLocalLatestVersion(localVersions: List<Version>): Version {
-        if (localVersions.isEmpty()) {
-            throw RuntimeException("can't found local versions")
-        }
-        return localVersions[0]
-    }
-
-    private suspend fun getRemoteVersion(starterVersion: Version, huluVersion: Version): VersionLatestResponse {
+    private suspend fun getRemoteVersion(localHuluVersions: HuluModuleVersion): VersionLatestResponse {
         // get remote latest version
-        val versionLatest: HuluResponse<VersionLatestResponse> = client.post {
+        val versionLatest = client.post {
             url("/version/latest")
             setBody(
-                VersionLatestRequest(
-                    myStarterVersion = starterVersion.toString(), myHuluVersion = huluVersion.toString()
-                )
+                localHuluVersions
             )
-        }.body()
+        }.body<HuluResponse<VersionLatestResponse>>()
         if ((versionLatest.status.code) != 0) {
             throw RuntimeException("status code not zero")
         }
-        return versionLatest.data!!;
+        return versionLatest.data!!
     }
 
-    private suspend fun downloadFile(fileUrl: String, destPath: String) {
-        val fileBytes: ByteArray = client.get { url(fileUrl) }.body()
-        val downloadFile = fopen(destPath, "w") ?: throw RuntimeException("can't open download file path")
-        fwrite(fileBytes.toCValues(), fileBytes.size.toULong(), 1, downloadFile)
-        fclose(downloadFile)
-        // TODO: check md5, not now, because of kotlin native has no openssl library to make md5. crypt()
+    private fun updateCmd(location: ModuleLocation): String {
+        return "cd $WORK_DIR/${location.name} && wget ${DOWNLOAD_LOCATION}/${location.name}/${location.version}/${location.name}.tar.gz " +
+                "&& tar -zxf ${location.name}.tar.gz && rm -rf ${location.name}.tar.gz"
     }
 }
 
-object NameGenerator {
-    private val alphaPool = ('a'..'z')
-
-    fun randomAlphaName(count: Int): String {
-        val result = ""
-        repeat(count) {
-            result + alphaPool.random()
-        }
-        return result
-    }
-}

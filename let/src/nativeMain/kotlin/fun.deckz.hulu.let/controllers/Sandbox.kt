@@ -2,7 +2,7 @@ package `fun`.deckz.hulu.let.controllers
 
 import `fun`.deckz.hulu.api.sandbox.CreateSandboxRequest
 import `fun`.deckz.hulu.api.sandbox.CreateSandboxResponse
-import `fun`.deckz.hulu.process.ProcessManager
+import `fun`.deckz.hulu.process.Process
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -23,7 +23,7 @@ fun Application.configureSandbox() {
                 val request: CreateSandboxRequest = call.receive()
                 logger.info { Json.encodeToString(request) }
                 CoroutineScope(Dispatchers.Default).launch {
-                    ProcessManager.startCmd(request.command, request.argv)
+                    Process.start(request.command, request.argv)
                 }
                 call.respond(CreateSandboxResponse(sandboxID = "abc"))
             }

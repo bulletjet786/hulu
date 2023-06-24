@@ -41,7 +41,7 @@ fun App() {
 fun main(argv: Array<String>) = application {
     if (argv.isNotEmpty()) {
         if (argv[0] == "version") {
-            println(myVersion)
+            print(myVersion)
             exitProcess(0)
         }
     }

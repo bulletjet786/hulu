@@ -1,4 +1,5 @@
 DIST_DIR = /www/wwwroot/static
+WORK_DIR = /home/deck/tmp/fun.deckz/hulu
 
 STARTER_OUTPUT_DIR = ./starter/build/bin/native/debugExecutable
 STARTER_VERSION = $(shell $(STARTER_OUTPUT_DIR)/starter.kexe version)
@@ -24,7 +25,7 @@ update_panel:
 	./gradlew panel:bootJar
 	scp -i ~/.tencentcloud.pem ./panel/build/libs/*.jar root@150.158.135.143:/app/fun.deckz/hulu/panel/panel.jar
 	ssh -i ~/.tencentcloud.pem root@150.158.135.143 \
-		"cd /app/fun.deckz/hulu/panel; kill -9 < application.pid;nohup java -jar panel.jar > output.log 2>&1 &"
+		"cd /app/fun.deckz/hulu/panel; cat application.pid | xargs kill -9 ; nohup java -jar panel.jar > output.log 2>&1 &"
 
 .PHONY:
 dist_starter:
@@ -43,10 +44,10 @@ dist_let:
 	./gradlew let:nativeBinaries
 	mkdir -p ${LET_PKG_DIR}
 	tar -czvf $(LET_PKG) -C $(LET_OUTPUT_DIR) .
-	@echo "start upload hulu let:${LET_VERSION} ..."
+	@echo "start upload let:${LET_VERSION} ..."
 	ssh -i ~/.tencentcloud.pem root@150.158.135.143 mkdir -p ${DIST_DIR}/hulu/let/${LET_VERSION}/
 	scp -i ~/.tencentcloud.pem ${LET_PKG} root@150.158.135.143:${DIST_DIR}/hulu/let/${LET_VERSION}/${LET_PKG_NAME}
-	@echo "upload upload hulu let:${LET_VERSION} finished"
+	@echo "upload let:${LET_VERSION} finished"
 
 .PHONY:
 dist_pad:
@@ -54,10 +55,49 @@ dist_pad:
 	./gradlew pad:createDistributable
 	mkdir -p  $(PAD_PKG_DIR)
 	tar -czvf $(PAD_PKG) -C $(PAD_OUTPUT_DIR) .
-	@echo "start upload hulu pad:${PAD_VERSION} ..."
+	@echo "start upload pad:${PAD_VERSION} ..."
 	ssh -i ~/.tencentcloud.pem root@150.158.135.143 mkdir -p ${DIST_DIR}/hulu/pad/${PAD_VERSION}/
 	scp -i ~/.tencentcloud.pem ${PAD_PKG} root@150.158.135.143:${DIST_DIR}/hulu/pad/${PAD_VERSION}/${PAD_PKG_NAME}
-	@echo "upload upload hulu pad:${PAD_VERSION} finished"
+	@echo "upload pad:${PAD_VERSION} finished"
 
 .PHONY:
 dist_hulu: dist_let dist_pad dist_starter
+
+.PHONY:
+install_let:
+	cd $(WORK_DIR)/let && wget http://150.158.135.143:7777/hulu/let/0.0.1/let.tar.gz
+	cd $(WORK_DIR)/let && tar -zxf let.tar.gz
+	cd $(WORK_DIR)/let && rm -rf let.tar.gz
+
+.PHONY:
+install_pad:
+	cd $(WORK_DIR)/pad && wget http://150.158.135.143:7777/hulu/pad/0.0.1/pad.tar.gz
+	cd $(WORK_DIR)/pad && tar -zxf pad.tar.gz
+	cd $(WORK_DIR)/pad && rm -rf pad.tar.gz
+
+.PHONY:
+install_starter:
+	cd $(WORK_DIR)/starter && wget http://150.158.135.143:7777/hulu/starter/0.0.1/starter.tar.gz
+	cd $(WORK_DIR)/starter && tar -zxf starter.tar.gz
+	cd $(WORK_DIR)/starter && rm -rf starter.tar.gz
+
+.PHONY:
+install_hulu: install_starter install_let install_pad
+
+.PHONY:
+l_install_let:
+	./gradlew let:clean
+	./gradlew let:nativeBinaries
+	cp ${STARTER_OUTPUT_DIR}/* $(WORK_DIR)/let/
+
+.PHONY:
+l_install_starter:
+	./gradlew starter:clean
+	./gradlew starter:nativeBinaries
+	cp ${LET_OUTPUT_DIR}/*  $(WORK_DIR)/starter/
+
+.PHONY:
+l_install_pad:
+	./gradlew pad:clean
+	./gradlew pad:createDistributable
+	cp -r ${PAD_OUTPUT_DIR}/* $(WORK_DIR)/pad/

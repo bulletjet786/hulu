@@ -7,5 +7,8 @@
       </Languages>
     </inspection_tool>
     <inspection_tool class="ReplaceUntilWithRangeUntil" enabled="true" level="WEAK WARNING" enabled_by_default="true" />
+    <inspection_tool class="ShellCheck" enabled="true" level="ERROR" enabled_by_default="true">
+      <shellcheck_settings value="SC1009" />
+    </inspection_tool>
   </profile>
 </component>
