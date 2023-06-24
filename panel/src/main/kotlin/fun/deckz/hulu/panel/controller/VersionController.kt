@@ -18,19 +18,19 @@ class VersionController {
                 starter = ModuleLocation(
                     name = ModuleName.STARTER,
                     version = "0.0.2",
-                    downloadUrl = "http://150.158.135.143:7777/starter/0.0.2/starter.zip",
+                    downloadUrl = "http://150.158.135.143:7777/hulu/starter/0.0.2/starter.tar.gz",
                     md5 = ""
                 ),
                 let = ModuleLocation(
                     name = ModuleName.LET,
                     version = "0.0.1",
-                    downloadUrl = "http://150.158.135.143:7777/let/0.0.1/let.zip",
+                    downloadUrl = "http://150.158.135.143:7777/hulu/let/0.0.1/let.tar.gz",
                     md5 = ""
                 ),
                 pad = ModuleLocation(
                     name = ModuleName.PAD,
                     version = "0.0.1",
-                    downloadUrl = "http://150.158.135.143:7777/pad/0.0.1/pad.zip",
+                    downloadUrl = "http://150.158.135.143:7777/hulu/pad/0.0.1/pad.tar.gz",
                     md5 = ""
                 )
             )

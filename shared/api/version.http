@@ -1,18 +1,19 @@
 ### Get latest version
-POST http://localhost:8181/version/latest
-Content-Type: application/json
-
-{
-  "myStarterVersion": "0.0.1",
-  "myHuluVersion": "0.0.1"
-}
-
-### Get latest version from remote
 POST http://150.158.135.143:8181/version/latest
 Content-Type: application/json
 
 {
-  "myStarterVersion": "0.0.1",
-  "myHuluVersion": "0.0.1"
+  "starter": {
+    "name": "starter",
+    "version": "0.0.1"
+  },
+  "let": {
+    "name": "let",
+    "version": "0.0.1"
+  },
+  "pad": {
+    "name": "pad",
+    "version": "0.0.1"
+  }
 }
 

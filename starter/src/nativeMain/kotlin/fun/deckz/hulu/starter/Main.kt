@@ -3,7 +3,6 @@ package `fun`.deckz.hulu.starter
 import `fun`.deckz.hulu.api.common.HuluResponse
 import `fun`.deckz.hulu.api.version.*
 import `fun`.deckz.hulu.process.Process
-import `fun`.deckz.hulu.process.ProcessManager
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.z4kn4fein.semver.Version
 import io.ktor.client.*
@@ -47,16 +46,11 @@ fun main(argv: Array<String>) = runBlocking {
     ModuleManager.run()
 }
 
-fun exitSigHandler(sig: Int) {
-    ProcessManager.removePidFile(ModuleManager.MY_PID_FILE)
-}
-
 object ModuleManager {
 
     private val logger = KotlinLogging.logger("ModuleManager")
 
-    // private const val WORK_DIR: String = "/opt/fun.deckz/hulu"
-    private const val WORK_DIR: String = "/home/deck/tmp/fun.deckz/hulu"
+    private const val WORK_DIR =  Environment.WORK_DIR
 
     private const val WORK_STARTER_DIR: String = "$WORK_DIR/starter"
     private const val WORK_LET_DIR: String = "$WORK_DIR/let"
@@ -66,13 +60,8 @@ object ModuleManager {
     private const val WORK_VAR_DIR: String = "$WORK_DIR/var"
     private const val WORK_ETC_DIR: String = "$WORK_DIR/etc"
 
-    const val MY_PID_FILE: String = "$WORK_VAR_DIR/starter.pid"
-
-    //    private const val huluHost: String = "localhost"
     private const val huluHost: String = "150.158.135.143"
     private const val huluPort: Int = 8181
-
-    private const val DOWNLOAD_LOCATION = "http://150.158.135.143:7777/hulu/"
 
     private val guardCheckChannel: Channel<Unit> = Channel()
     private val letProcess: AtomicReference<Process?> = AtomicReference(null)
@@ -228,7 +217,7 @@ object ModuleManager {
     }
 
     private fun updateCmd(location: ModuleLocation): String {
-        return "cd $WORK_DIR/${location.name} && wget ${DOWNLOAD_LOCATION}/${location.name}/${location.version}/${location.name}.tar.gz " +
+        return "cd $WORK_DIR/${location.name} && wget ${location.downloadUrl} " +
                 "&& tar -zxf ${location.name}.tar.gz && rm -rf ${location.name}.tar.gz"
     }
 }
