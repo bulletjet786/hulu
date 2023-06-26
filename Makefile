@@ -1,5 +1,6 @@
 DIST_DIR = /www/wwwroot/static
-WORK_DIR = /home/deck/tmp/fun.deckz/hulu
+#WORK_DIR = /home/deck/tmp/fun.deckz/hulu
+WORK_DIR = /opt/fun.deckz/hulu
 
 STARTER_OUTPUT_DIR = ./starter/build/bin/native/debugExecutable
 STARTER_VERSION = $(shell $(STARTER_OUTPUT_DIR)/starter.kexe version)
@@ -77,7 +78,7 @@ install_pad:
 
 .PHONY:
 install_starter:
-	cd $(WORK_DIR)/starter && wget http://150.158.135.143:7777/hulu/starter/0.0.1/starter.tar.gz
+	cd $(WORK_DIR)/starter && wget http://150.158.135.143:7777/hulu/starter/0.0.2/starter.tar.gz
 	cd $(WORK_DIR)/starter && tar -zxf starter.tar.gz
 	cd $(WORK_DIR)/starter && rm -rf starter.tar.gz
 
@@ -88,13 +89,13 @@ install_hulu: install_starter install_let install_pad
 l_install_let:
 	./gradlew let:clean
 	./gradlew let:nativeBinaries
-	cp ${STARTER_OUTPUT_DIR}/* $(WORK_DIR)/let/
+	cp ${LET_OUTPUT_DIR}/* $(WORK_DIR)/let/
 
 .PHONY:
 l_install_starter:
 	./gradlew starter:clean
 	./gradlew starter:nativeBinaries
-	cp ${LET_OUTPUT_DIR}/*  $(WORK_DIR)/starter/
+	cp ${STARTER_OUTPUT_DIR}/*  $(WORK_DIR)/starter/
 
 .PHONY:
 l_install_pad:
