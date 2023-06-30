@@ -9,6 +9,7 @@ function checkRoot() {
 
 function uninstall() {
   rm -rf /opt/fun.deckz/hulu
+  rm -rf /etc/systemd/system/fun.deckz.hulu.service
 }
 
 function main() {

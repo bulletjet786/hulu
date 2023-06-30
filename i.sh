@@ -3,6 +3,7 @@ set -o errexit
 
 # configuration
 HULU_ENDPOINT="http://150.158.135.143:8181"
+HULU_WORK_DIR=/opt/fun.deckz/hulu
 CURRENT_DIR=$(pwd)
 
 function checkRoot() {
@@ -64,7 +65,32 @@ function installPackage() {
 
   cd "$CURRENT_DIR" || exit
 
+
+
+  #
+}
+
+function installService() {
+
   # install service
+  # shellcheck disable=SC1073
+  cat > "${HULU_WORK_DIR}/starter/fun.deckz.hulu.service" <<-EOF
+[Unit]
+Description=Hulu Service
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+Restart=always
+ExecStart=${HULU_WORK_DIR}/starter/starter.kexe
+WorkingDirectory=${HULU_WORK_DIR}
+KillSignal=SIGKILL
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  ln -s ${HULU_WORK_DIR}/starter/fun.deckz.hulu.service /etc/systemd/system/fun.deckz.hulu.service
 }
 
 function main() {
@@ -73,6 +99,7 @@ function main() {
   installDependencies
   prepare
   installPackage
+  installService
   echo "宝葫芦 成功啦！体验一下吧！"
 }
 
