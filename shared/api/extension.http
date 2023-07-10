@@ -1,0 +1,7 @@
+### sandbox create
+POST http://localhost:8282/extension/list
+Content-Type: application/json
+
+{
+  "type": null
+}

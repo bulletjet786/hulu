@@ -19,11 +19,11 @@ class HuluResponse<T> private constructor(
             return HuluResponse(data = data);
         }
 
-        fun <T> success(): HuluResponse<T> {
+        fun success(): HuluResponse<Nothing> {
             return HuluResponse();
         }
 
-        fun <T> failure(code: Int, msg: String): HuluResponse<T> {
+        fun failure(code: Int, msg: String): HuluResponse<Nothing> {
             return HuluResponse(status = Status(code, msg))
         }
 

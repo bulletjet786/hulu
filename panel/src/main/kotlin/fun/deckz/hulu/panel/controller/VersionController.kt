@@ -23,8 +23,8 @@ class VersionController {
                 ),
                 let = ModuleLocation(
                     name = ModuleName.LET,
-                    version = "0.0.1",
-                    downloadUrl = "http://150.158.135.143:7777/hulu/let/0.0.1/let.tar.gz",
+                    version = "0.0.2",
+                    downloadUrl = "http://150.158.135.143:7777/hulu/let/0.0.2/let.tar.gz",
                     md5 = ""
                 ),
                 pad = ModuleLocation(

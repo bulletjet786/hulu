@@ -7,9 +7,11 @@ import platform.linux.prctl
 import platform.posix.*
 import kotlin.native.concurrent.AtomicInt
 
-class Process(
+class Process private constructor(
     private val pid: Int,
     private val pipe: Boolean,
+    private val workdir: String? = null,
+    private val uid: Int? = null,
     private val stdoutPipe: CArrayPointer<IntVar>?,
     private val stderrPipe: CArrayPointer<IntVar>?,
 ) {
@@ -43,7 +45,13 @@ class Process(
             }
         }
 
-        fun start(cmd: String, argv: Array<String>?, pipe: Boolean = false): Process {
+        fun start(
+            cmd: String,
+            argv: List<String>?,
+            workdir: String? = null,
+            uid: Int? = null,
+            pipe: Boolean = false
+        ): Process {
             var stdoutPipe: CArrayPointer<IntVar>? = null
             var stderrPipe: CArrayPointer<IntVar>? = null
             if (pipe) {
@@ -58,14 +66,14 @@ class Process(
                 if (pipe) {
                     configChildPipe(stdoutPipe!!, stderrPipe!!)
                 }
-                configChildProcess(cmd, argv)
+                configChildProcess(cmd, argv, workdir, uid)
             }
             // for parent process
             logger.info { "start cmd process success: command=$cmd, argv=${argv?.joinToString()} childPid=$ret" }
             if (pipe) {
                 configParentPipe(stdoutPipe!!, stderrPipe!!)
             }
-            val childProcess = Process(ret, pipe, stdoutPipe, stderrPipe)
+            val childProcess = Process(ret, pipe, workdir, uid, stdoutPipe, stderrPipe)
             children[childProcess.pid] = childProcess
             return childProcess
         }
@@ -85,16 +93,24 @@ class Process(
 
         private fun configChildProcess(
             cmd: String,
-            argv: Array<String>?
+            argv: List<String>?,
+            workdir: String?,
+            uid: Int?
         ) {
             prctl(PR_SET_PDEATHSIG, SIGKILL);
+            if (workdir != null) {
+                chdir(workdir)
+            }
+            if (uid != null) {
+                setuid(uid.toUInt())
+            }
             memScoped {
-                val cArgs = allocArray<CPointerVar<ByteVar>>((argv?.size ?: 0) + 2)
-                cArgs[0] = cmd.cstr.ptr
+                val cArgv = allocArray<CPointerVar<ByteVar>>((argv?.size ?: 0) + 2)
+                cArgv[0] = cmd.cstr.ptr
                 argv?.forEachIndexed { i, it ->
-                    cArgs[i + 1] = it.cstr.ptr
+                    cArgv[i + 1] = it.cstr.ptr
                 }
-                val execRet = execvp(cmd, cArgs) // don't return when success
+                val execRet = execvp(cmd, cArgv) // don't return when success
                 if (execRet != 0) {
                     throw RuntimeException("execvp failed: error is $errno")
                 }

@@ -60,6 +60,8 @@ object ModuleManager {
     private const val WORK_VAR_DIR: String = "$WORK_DIR/var"
     private const val WORK_ETC_DIR: String = "$WORK_DIR/etc"
 
+    private const val DECK_UID: Int = 1000
+
     private const val huluHost: String = "150.158.135.143"
     private const val huluPort: Int = 8181
 
@@ -188,9 +190,9 @@ object ModuleManager {
     }
 
     private fun getModuleLocalVersion(): HuluModuleVersion {
-        val starter = Process.start("$WORK_STARTER_DIR/starter.kexe", arrayOf("version"), pipe = true)
-        val let = Process.start("$WORK_LET_DIR/let.kexe", arrayOf("version"), pipe = true)
-        val pad = Process.start("$WORK_PAD_DIR/bin/pad", arrayOf("version"), pipe = true)
+        val starter = Process.start("$WORK_STARTER_DIR/starter.kexe", listOf("version"), pipe = true)
+        val let = Process.start("$WORK_LET_DIR/let.kexe", listOf("version"), pipe = true)
+        val pad = Process.start("$WORK_PAD_DIR/bin/pad", listOf("version"), pipe = true)
         starter.waitExited()
         let.waitExited()
         pad.waitExited()

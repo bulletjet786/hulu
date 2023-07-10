@@ -9,6 +9,7 @@ STARTER_PKG_NAME = starter.tar.gz
 STARTER_PKG = $(STARTER_PKG_DIR)/${STARTER_PKG_NAME}
 
 LET_OUTPUT_DIR = ./let/build/bin/native/debugExecutable
+# TODO: have bug, should run after build
 LET_VERSION = $(shell $(LET_OUTPUT_DIR)/let.kexe version)
 LET_PKG_DIR = let/build/product
 LET_PKG_NAME = let.tar.gz
@@ -102,3 +103,11 @@ l_install_pad:
 	./gradlew pad:clean
 	./gradlew pad:createDistributable
 	cp -r ${PAD_OUTPUT_DIR}/* $(WORK_DIR)/pad/
+
+.PHONY:
+l_install_extension:
+	cp -r let/src/nativeMain/resources/extensions /opt/fun.deckz/hulu/data
+
+.PHONY:
+l_restart_hulu:
+	systemctl restart fun.deckz.hulu.service

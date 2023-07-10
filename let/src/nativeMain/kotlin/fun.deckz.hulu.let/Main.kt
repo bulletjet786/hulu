@@ -1,6 +1,7 @@
 package `fun`.deckz.hulu.let
 
-import `fun`.deckz.hulu.let.controllers.configureSandbox
+import `fun`.deckz.hulu.let.controllers.configureExtension
+import `fun`.deckz.hulu.let.extensions.configureExtensionDaemon
 import `fun`.deckz.hulu.let.plugins.configureException
 import `fun`.deckz.hulu.let.plugins.configureHTTP
 import `fun`.deckz.hulu.let.plugins.configureMonitoring
@@ -15,7 +16,7 @@ import platform.posix.exit
 private val logger = KotlinLogging.logger {}
 
 private val myVersion = Version(
-    major = 0, minor = 0, patch = 1
+    major = 0, minor = 0, patch = 2
 )
 
 fun main(argv: Array<String>) {
@@ -35,5 +36,6 @@ fun Application.module() {
     configureMonitoring()
     configureSerialization()
     configureException()
-    configureSandbox()
+    configureExtension()
+    configureExtensionDaemon()
 }

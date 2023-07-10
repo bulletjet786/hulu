@@ -1,0 +1,26 @@
+{
+  "name": "fcitx",
+  "version": "0.0.1",
+  "description": "Fcitx5 Input Method",
+  "icon": "./fcitx.png",
+  "deploy": {
+    "install": {
+      "command": "/bin/sh",
+      "argv": ["-c", "./deploy/install.sh"]
+    },
+    "uninstall": {
+      "command": "/bin/sh",
+      "argv": ["-c", "./deploy/uninstall.sh\""]
+    },
+    "check": {
+      "command": "/bin/sh",
+      "argv": ["-c", "./deploy/check.sh"]
+    }
+  },
+  "functions": {
+    "start": {
+      "command": "/bin/sh",
+      "argv": ["-c", "./functions/start.sh"]
+    }
+  }
+}

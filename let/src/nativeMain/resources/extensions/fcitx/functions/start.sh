@@ -1,0 +1,1 @@
+flatpak run --branch=stable --arch=x86_64 --command=/app/bin/fcitx5 org.fcitx.Fcitx5
