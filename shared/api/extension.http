@@ -1,7 +1,15 @@
-### sandbox create
+### extension list
 POST http://localhost:8282/extension/list
 Content-Type: application/json
 
 {
   "type": null
+}
+
+### extension install
+POST http://localhost:8282/extension/install
+Content-Type: application/json
+
+{
+  "name": "fcitx"
 }

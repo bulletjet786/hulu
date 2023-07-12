@@ -14,11 +14,16 @@ class Process private constructor(
     private val uid: Int? = null,
     private val stdoutPipe: CArrayPointer<IntVar>?,
     private val stderrPipe: CArrayPointer<IntVar>?,
+    private var exitCode: Int? = null
 ) {
 
     private val alive: AtomicInt = AtomicInt(1) // TODO: should use AtomicBoolean, but don't have
 
     companion object {
+
+        private fun exitCodeFromProcess(status: Int): Int {
+            return (status shr 8) and 0xFF
+        }
 
         init {
             signal(SIGCHLD, staticCFunction<Int, Unit> {
@@ -34,12 +39,12 @@ class Process private constructor(
                 val status = alloc<IntVar>()
                 while (true) {
                     val pid = waitpid(-1, status.ptr, WNOHANG)
-                    logger.info { "wait pid=${pid}, status=${status.value}, exit status=${(status.value shl 8) and 0xFF}" }
+                    logger.info { "wait pid=${pid}, status=${status.value}, exit status=${exitCodeFromProcess(status.value)}" }
                     if (pid <= 0) {
                         break;
                     }
                     if (pid in children) {
-                        children[pid]!!.alive(false)
+                        children[pid]!!.alive(false, exitCodeFromProcess(status.value))
                     }
                 }
             }
@@ -69,7 +74,7 @@ class Process private constructor(
                 configChildProcess(cmd, argv, workdir, uid)
             }
             // for parent process
-            logger.info { "start cmd process success: command=$cmd, argv=${argv?.joinToString()} childPid=$ret" }
+            logger.info { "start cmd process success: [command=$cmd] [argv=${argv?.joinToString()}] [workdir=${workdir}] [uid=${uid}] [childPid=$ret]" }
             if (pipe) {
                 configParentPipe(stdoutPipe!!, stderrPipe!!)
             }
@@ -145,10 +150,10 @@ class Process private constructor(
     fun waitExited() {
         memScoped {
             val status = alloc<IntVar>()
-            if (!alive()) {
+            if (alive()) {
                 waitpid(pid, status.ptr, 0)
-                logger.info { "wait pid=${pid}, status=${status.value}, exit status=${(status.value shl 8) and 0xFF}" }
-                alive(true)
+                logger.info { "wait pid=${pid}, status=${status.value}, exit code=${exitCodeFromProcess(status.value)}" }
+                alive(false, exitCodeFromProcess(status.value))
             }
         }
     }
@@ -157,8 +162,14 @@ class Process private constructor(
         return alive.value == 1
     }
 
-    private fun alive(value: Boolean) {
+    fun exitCode(): Int {
+        return this.exitCode!!
+    }
+
+    private fun alive(value: Boolean, code: Int) {
+        logger.info { "make alive=${value} exitCode={$code}" }
         if (value) this.alive.value = 1 else this.alive.value = 0
+        this.exitCode = code
     }
 
     fun kill() {
@@ -191,9 +202,9 @@ class Process private constructor(
                 }
                 totalBuf.addAll(buf.readBytes(count.toInt()).asList())
             }
-            val version = totalBuf.toByteArray().decodeToString()
-            logger.info { "pid=$pid read stdout: content=$version" }
-            return version
+            val content = totalBuf.toByteArray().decodeToString()
+            logger.info { "pid=$pid read stdout: content=$content" }
+            return content
         }
     }
 

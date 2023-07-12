@@ -86,22 +86,27 @@ install_starter:
 .PHONY:
 install_hulu: install_starter install_let install_pad
 
+# TODO: bug can't cp, use rm and cp, todo: test
+
 .PHONY:
 l_install_let:
 	./gradlew let:clean
 	./gradlew let:nativeBinaries
+	rm -rf $(WORK_DIR)/let/*
 	cp ${LET_OUTPUT_DIR}/* $(WORK_DIR)/let/
 
 .PHONY:
 l_install_starter:
 	./gradlew starter:clean
 	./gradlew starter:nativeBinaries
+	rm -rf $(WORK_DIR)/starter/*
 	cp ${STARTER_OUTPUT_DIR}/*  $(WORK_DIR)/starter/
 
 .PHONY:
 l_install_pad:
 	./gradlew pad:clean
 	./gradlew pad:createDistributable
+	rm -rf $(WORK_DIR)/pad/*
 	cp -r ${PAD_OUTPUT_DIR}/* $(WORK_DIR)/pad/
 
 .PHONY:

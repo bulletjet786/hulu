@@ -21,13 +21,13 @@ fun configureExtensionDaemon() {
                     it.value.deploy.check.command,
                     it.value.deploy.check.argv,
                     workdir = "$WORK_DIR/data/extensions/${it.key}",
-                    uid = 1000,
-                    pipe = true
+//                    uid = 1000,
+                    pipe = false
                 )
                 checkProc.waitExited()
-                when (checkProc.readStdout()) {
-                    "Installed" -> it.value.installed = true
-                    "Uninstalled" -> it.value.installed = false
+                when (checkProc.exitCode()) {
+                    0 -> it.value.installed = true
+                    201 -> it.value.installed = false
                 }
             }
             delay(10.seconds)

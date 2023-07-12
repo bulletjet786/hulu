@@ -10,7 +10,7 @@
     },
     "uninstall": {
       "command": "/bin/sh",
-      "argv": ["-c", "./deploy/uninstall.sh\""]
+      "argv": ["-c", "./deploy/uninstall.sh"]
     },
     "check": {
       "command": "/bin/sh",

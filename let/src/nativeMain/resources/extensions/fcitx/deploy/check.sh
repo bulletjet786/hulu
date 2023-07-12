@@ -12,9 +12,9 @@ function main() {
   checkFlatpakExist org.fcitx.Fcitx5.Addon.ChineseAddons
   fcitxAddonsExist=$?
   if [ "$fcitxExist" == 1 ] && [ "$fcitxAddonsExist" == 1 ]; then
-    echo "Installed"
+    exit 0
   else
-    echo "Uninstalled"
+    exit 201
   fi
 }
 

@@ -19,6 +19,7 @@ import kotlinx.serialization.json.Json
 
 fun Application.configureExtension() {
     val logger = KotlinLogging.logger {}
+    val WORK_DIR: String = "/opt/fun.deckz/hulu"
 
     routing {
         route("extension") {
@@ -43,7 +44,13 @@ fun Application.configureExtension() {
                     return@post
                 }
                 CoroutineScope(Dispatchers.Default).launch {
-                    Process.start(extension.deploy.install.command, extension.deploy.install.argv)
+                    Process.start(
+                        extension.deploy.install.command,
+                        extension.deploy.install.argv,
+                        workdir = "$WORK_DIR/data/extensions/${request.name}",
+//                        uid = 1000,
+                        pipe = false
+                        )
                 }
                 call.respond(HuluResponse.success())
             }
